@@ -3,8 +3,10 @@ import { useState } from "react";
 import { useFormik, Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import {
+  Autocomplete,
   Button,
   Checkbox,
+  Chip,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -17,13 +19,23 @@ import {
   OutlinedInput,
   Radio,
   RadioGroup,
+  Rating,
   Select,
+  Slider,
+  Switch,
   TextField,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import {
+  DatePicker,
+  DateTimePicker,
+  LocalizationProvider,
+  TimePicker,
+} from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
 import { useDropzone } from "react-dropzone";
+import moment from "moment";
+import { parseISO } from "date-fns";
 
 const GlobalForm = ({
   form_config,
@@ -40,7 +52,41 @@ const GlobalForm = ({
         if (field.type === "select" || field.type === "radio") {
           schema[field.name] = Yup.string().required(field.validation_message);
         } else if (field.type === "number") {
-          schema[field.name] = Yup.number().required(field.validation_message);
+          let numberSchema = Yup.number().required(field.validation_message);
+          if (field.min !== undefined) {
+            numberSchema = numberSchema.min(
+              field.min,
+              `Value must be at least ${field.min}`
+            );
+          }
+          if (field.max !== undefined) {
+            numberSchema = numberSchema.max(
+              field.max,
+              `Value must be at most ${field.max}`
+            );
+          }
+          schema[field.name] = numberSchema;
+        } else if (field.type === "text") {
+          let stringSchema = Yup.string().required(field.validation_message);
+          if (field.pattern) {
+            stringSchema = stringSchema.matches(
+              new RegExp(field.pattern),
+              field.pattern_message || "Invalid format"
+            );
+          }
+          schema[field.name] = stringSchema;
+        } else if (field.type === "url") {
+          schema[field.name] = Yup.string()
+            .url("Invalid URL")
+            .required(field.validation_message);
+        } else if (field.type === "tel") {
+          schema[field.name] = Yup.string()
+            .matches(/^[0-9]{10}$/, "Invalid phone number")
+            .required(field.validation_message);
+        } else if (field.type === "email") {
+          schema[field.name] = Yup.string()
+            .email("Invalid email format")
+            .required(field.validation_message);
         } else if (field.type === "date") {
           let dateSchema = Yup.date().required(field.validation_message);
           if (field.min_date) {
@@ -51,6 +97,15 @@ const GlobalForm = ({
             );
           }
           schema[field.name] = dateSchema;
+        } else if (field.type === "checkbox") {
+          schema[field.name] = Yup.boolean().oneOf(
+            [true],
+            field.validation_message
+          );
+        } else if (field.type === "switch") {
+          schema[field.name] = Yup.boolean().required(field.validation_message);
+        } else if (field.type === "file") {
+          schema[field.name] = Yup.mixed().required(field.validation_message);
         } else if (field.type === "password") {
           schema[field.name] = Yup.string()
             .required("Password is required")
@@ -70,6 +125,8 @@ const GlobalForm = ({
             );
         } else if (field.type === "image") {
           schema[field.name] = Yup.mixed().required(field.validation_message);
+        } else if (field.type === "file") {
+          schema[field.name] = Yup.mixed().required(field.validation_message);
         } else if (field.type === "multi-select-dropdown") {
           schema[field.name] = Yup.array()
             .of(Yup.string())
@@ -80,6 +137,35 @@ const GlobalForm = ({
             .of(Yup.string())
             .min(1, field.validation_message)
             .required(field.validation_message);
+        } else if (field.type === "chips") {
+          let arraySchema = Yup.array()
+            .of(Yup.string())
+            .min(1, field.validation_message)
+            .required(field.validation_message);
+          if (field.max_items) {
+            arraySchema = arraySchema.max(
+              field.max_items,
+              `You can add up to ${field.max_items} names`
+            );
+          }
+          schema[field.name] = arraySchema;
+        } else if (field.type === "slider") {
+          let sliderSchema = Yup.number().required(field.validation_message);
+          if (field.min !== undefined) {
+            sliderSchema = sliderSchema.min(
+              field.min,
+              `Value must be at least ${field.min}`
+            );
+          }
+          if (field.max !== undefined) {
+            sliderSchema = sliderSchema.max(
+              field.max,
+              `Value must be at most ${field.max}`
+            );
+          }
+          schema[field.name] = sliderSchema;
+        } else if (field.type === "rating") {
+          schema[field.name] = Yup.number().required(field.validation_message);
         } else {
           schema[field.name] = Yup.string().required(field.validation_message);
         }
@@ -103,7 +189,8 @@ const GlobalForm = ({
       values[field.name] = field.default_date ? field.default_date : "";
     } else if (
       field.type === "multi-select-checkbox" ||
-      field.type === "multi-select-dropdown"
+      field.type === "multi-select-dropdown" ||
+      field.type === "chips"
     ) {
       values[field.name] = [];
     } else {
@@ -128,16 +215,38 @@ const GlobalForm = ({
               //   src={URL.createObjectURL(field.value)}
               src={field.value}
               alt="Preview"
-              width="100"
             />
             <p>{field.value.name}</p>
           </div>
         ) : (
-          <p>Drag & drop an image here, or click to select one</p>
+          <p>Upload Image</p>
         )}
       </div>
     );
   };
+
+  const FileUpload = ({ field, form }) => {
+    const onDrop = (acceptedFiles) => {
+      form.setFieldValue(field.name, acceptedFiles[0]);
+    };
+
+    const { getRootProps, getInputProps } = useDropzone({ onDrop });
+
+    return (
+      <div {...getRootProps({ className: "dropzone" })}>
+        <input {...getInputProps()} />
+        {field.value ? (
+          <div>
+            <p>{field.value.name}</p>
+          </div>
+        ) : (
+          <p>Upload File</p>
+        )}
+      </div>
+    );
+  };
+
+  console.log("Initial Values", initialValues, editingValues);
 
   return (
     <Formik
@@ -148,7 +257,7 @@ const GlobalForm = ({
       }}
     >
       {({ errors, touched, setFieldValue, values }) => {
-        console.log("form values", values);
+        console.log("form values", values, editingValues);
         return (
           <Form>
             <Grid container spacing={2}>
@@ -175,7 +284,7 @@ const GlobalForm = ({
                           touched[input.name] && Boolean(errors[input.name])
                         }
                       >
-                        <FormLabel component="legend">{input.label}</FormLabel>
+                        <label component="legend">{input.label}</label>
                         <RadioGroup
                           row
                           name={input.name}
@@ -197,6 +306,50 @@ const GlobalForm = ({
                           <div className="error">{errors[input.name]}</div>
                         )}
                       </FormControl>
+                    ) : input.type === "checkbox" ? (
+                      <FormControl
+                        fullWidth={input.fullWidth}
+                        error={
+                          touched[input.name] && Boolean(errors[input.name])
+                        }
+                      >
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={values[input.name]}
+                              onChange={(event) =>
+                                setFieldValue(input.name, event.target.checked)
+                              }
+                            />
+                          }
+                          label={input.label}
+                        />
+                        {touched[input.name] && errors[input.name] && (
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
+                    ) : input.type === "switch" ? (
+                      <FormControl
+                        fullWidth={input.fullWidth}
+                        error={
+                          touched[input.name] && Boolean(errors[input.name])
+                        }
+                      >
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={values[input.name]}
+                              onChange={(event) =>
+                                setFieldValue(input.name, event.target.checked)
+                              }
+                            />
+                          }
+                          label={input.label}
+                        />
+                        {touched[input.name] && errors[input.name] && (
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
                     ) : input.type === "date" ? (
                       <FormControl fullWidth={input.fullWidth}>
                         <LocalizationProvider
@@ -205,32 +358,39 @@ const GlobalForm = ({
                         >
                           <Field name={input.name}>
                             {({ field }) => (
-                              <DatePicker
-                                {...field}
-                                label={input.label}
-                                value={values[input.name]}
-                                minDate={
-                                  input.min_date ? input.min_date : undefined
-                                }
-                                onChange={(date) => {
-                                  setFieldValue(input.name, date);
-                                }}
-                                renderInput={(params) => (
-                                  <TextField
-                                    {...params}
-                                    InputLabelProps={{
-                                      shrink: input.shrink,
-                                    }}
-                                    error={
-                                      touched[input.name] &&
-                                      Boolean(errors[input.name])
-                                    }
-                                    helperText={
-                                      touched[input.name] && errors[input.name]
-                                    }
-                                  />
-                                )}
-                              />
+                              <>
+                                <label>{input.label}</label>
+
+                                <DatePicker
+                                  {...field}
+                                  value={values[input.name]}
+                                  minDate={
+                                    input.min_date ? input.min_date : undefined
+                                  }
+                                  onChange={(date) => {
+                                    setFieldValue(
+                                      input.name,
+                                      moment(date).format("YYYY-MM-DD")
+                                    );
+                                  }}
+                                  renderInput={(params) => (
+                                    <TextField
+                                      {...params}
+                                      InputLabelProps={{
+                                        shrink: input.shrink,
+                                      }}
+                                      error={
+                                        touched[input.name] &&
+                                        Boolean(errors[input.name])
+                                      }
+                                      helperText={
+                                        touched[input.name] &&
+                                        errors[input.name]
+                                      }
+                                    />
+                                  )}
+                                />
+                              </>
                             )}
                           </Field>
                         </LocalizationProvider>
@@ -238,14 +398,101 @@ const GlobalForm = ({
                           <div className="error">{errors[input.name]}</div>
                         )}
                       </FormControl>
+                    ) : input.type === "time" ? (
+                      <FormControl fullWidth={input.fullWidth}>
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                          <Field name={input.name}>
+                            {({ field }) => {
+                              // Convert the value to a Date object if it's a string (ISO format)
+                              const parsedDate = values[input.name]
+                                ? new Date(values[input.name])
+                                : null;
+
+                              return (
+                                <>
+                                  <label>{input.label}</label>
+                                  <TimePicker
+                                    {...field}
+                                    value={parsedDate}
+                                    onChange={(time) =>
+                                      setFieldValue(
+                                        input.name,
+                                        moment(time).format(
+                                          "YYYY-MM-DD HH:mm:ss Z"
+                                        )
+                                      )
+                                    }
+                                    renderInput={(params) => (
+                                      <TextField
+                                        {...params}
+                                        error={
+                                          touched[input.name] &&
+                                          Boolean(errors[input.name])
+                                        }
+                                        helperText={
+                                          touched[input.name] &&
+                                          errors[input.name]
+                                        }
+                                      />
+                                    )}
+                                  />
+                                </>
+                              );
+                            }}
+                          </Field>
+                        </LocalizationProvider>
+                      </FormControl>
+                    ) : input.type === "date-time" ? (
+                      <FormControl fullWidth={input.fullWidth}>
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                          <Field name={input.name}>
+                            {({ field }) => {
+                              const parsedDate = values[input.name]
+                                ? new Date(values[input.name])
+                                : null;
+
+                              return (
+                                <>
+                                  <label>{input.label}</label>
+                                  <DateTimePicker
+                                    {...field}
+                                    value={parsedDate}
+                                    onChange={(datetime) =>
+                                      setFieldValue(
+                                        input.name,
+                                        moment(datetime).format(
+                                          "YYYY-MM-DD HH:mm:ss Z"
+                                        )
+                                      )
+                                    }
+                                    renderInput={(params) => (
+                                      <TextField
+                                        {...params}
+                                        error={
+                                          touched[input.name] &&
+                                          Boolean(errors[input.name])
+                                        }
+                                        helperText={
+                                          touched[input.name] &&
+                                          errors[input.name]
+                                        }
+                                      />
+                                    )}
+                                  />
+                                </>
+                              );
+                            }}
+                          </Field>
+                        </LocalizationProvider>
+                      </FormControl>
                     ) : input.type === "password" && input.show_password ? (
                       <FormControl fullWidth={input.fullWidth}>
+                        <label>{input.label}</label>
                         <Field name={input.name}>
                           {({ field }) => (
                             <TextField
                               {...field}
                               type={showPassword ? "text" : "password"}
-                              label={input.label}
                               fullWidth={input.fullWidth}
                               InputLabelProps={{
                                 shrink: input.shrink,
@@ -281,13 +528,26 @@ const GlobalForm = ({
                       </FormControl>
                     ) : input.type === "image" ? (
                       <FormControl fullWidth={input.fullWidth}>
+                        <label>{input.label}</label>
                         <Field name={input.name}>
                           {({ field, form }) => (
                             <ImageUpload field={field} form={form} />
                           )}
                         </Field>
                         {touched[input.name] && Boolean(errors[input.name]) && (
-                          <div className="error-text">{errors[input.name]}</div>
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
+                    ) : input.type === "file" ? (
+                      <FormControl fullWidth={input.fullWidth}>
+                        <label>{input.label}</label>
+                        <Field name={input.name}>
+                          {({ field, form }) => (
+                            <FileUpload field={field} form={form} />
+                          )}
+                        </Field>
+                        {touched[input.name] && errors[input.name] && (
+                          <div className="error">{errors[input.name]}</div>
                         )}
                       </FormControl>
                     ) : input.type === "multi-select-checkbox" ? (
@@ -297,10 +557,12 @@ const GlobalForm = ({
                           touched[input.name] && Boolean(errors[input.name])
                         }
                       >
-                        <FormLabel component="legend">{input.label}</FormLabel>
+                        <label component="legend">{input.label}</label>
                         <Grid container>
                           {input.options.map((option) => (
                             <Grid item xs={12} sm={6} key={option.value}>
+                              <label>{input.label}</label>
+
                               <FormControlLabel
                                 control={
                                   <Checkbox
@@ -327,96 +589,197 @@ const GlobalForm = ({
                           ))}
                         </Grid>
                         {touched[input.name] && Boolean(errors[input.name]) && (
-                          <div className="error-text">{errors[input.name]}</div>
+                          <div className="error">{errors[input.name]}</div>
                         )}
                       </FormControl>
                     ) : input.type === "multi-select-dropdown" ? (
                       <FormControl fullWidth={input.fullWidth}>
-                        <InputLabel>{input.label}</InputLabel>
                         <Field name={input.name}>
                           {({ field }) => (
-                            <Select
-                              {...field}
+                            <>
+                              <label>{input.label}</label>
+
+                              <Select
+                                {...field}
+                                multiple
+                                value={values[input.name]}
+                                onChange={(event) =>
+                                  setFieldValue(input.name, event.target.value)
+                                }
+                                renderValue={(selected) => selected.join(", ")}
+                                error={
+                                  touched[field.name] &&
+                                  Boolean(errors[field.name])
+                                }
+                              >
+                                {input?.options?.map((option) => (
+                                  <MenuItem
+                                    key={option?.value}
+                                    value={option?.value}
+                                  >
+                                    <Checkbox
+                                      checked={values?.[input?.name]?.includes(
+                                        option?.value
+                                      )}
+                                    />
+                                    <ListItemText primary={option?.label} />
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </>
+                          )}
+                        </Field>
+                        {touched[input.name] && Boolean(errors[input.name]) && (
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
+                    ) : input.type === "chips" ? (
+                      <Grid
+                        item
+                        xs={input.xs}
+                        sm={input.sm}
+                        md={input.md}
+                        lg={input.lg}
+                        key={input.name}
+                      >
+                        <Field name={input.name}>
+                          {({ field }) => (
+                            <Autocomplete
                               multiple
-                              value={values[input.name]}
-                              onChange={(event) =>
-                                setFieldValue(input.name, event.target.value)
+                              freeSolo
+                              options={[]}
+                              value={values[input.name] || []}
+                              onChange={(event, newValue) => {
+                                if (
+                                  input.max_items &&
+                                  newValue.length > input.max_items
+                                ) {
+                                  newValue = newValue.slice(0, input.max_items);
+                                }
+                                setFieldValue(input.name, newValue);
+                              }}
+                              renderTags={(value, getTagProps) =>
+                                value.map((option, index) => (
+                                  <Chip
+                                    key={index}
+                                    variant="outlined"
+                                    label={option}
+                                    {...getTagProps({ index })}
+                                  />
+                                ))
                               }
-                              input={<OutlinedInput label={input.label} />}
-                              renderValue={(selected) => selected.join(", ")}
+                              renderInput={(params) => (
+                                <>
+                                  <label>{input.label}</label>
+
+                                  <TextField
+                                    {...params}
+                                    error={
+                                      touched[input.name] &&
+                                      Boolean(errors[input.name])
+                                    }
+                                    helperText={
+                                      touched[input.name] && errors[input.name]
+                                    }
+                                    fullWidth={input.fullWidth}
+                                  />
+                                </>
+                              )}
+                            />
+                          )}
+                        </Field>
+                      </Grid>
+                    ) : input.type === "slider" ? (
+                      <FormControl fullWidth={input.fullWidth}>
+                        <label>{input.label}</label>
+                        <Field name={input.name}>
+                          {({ field }) => (
+                            <Slider
+                              {...field}
+                              value={values[input.name]}
+                              onChange={(event, value) =>
+                                setFieldValue(input.name, value)
+                              }
+                              min={input.min}
+                              max={input.max}
+                              step={input.step}
+                            />
+                          )}
+                        </Field>
+                        {touched[input.name] && errors[input.name] && (
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
+                    ) : input.type === "rating" ? (
+                      <FormControl fullWidth={input.fullWidth}>
+                        <label>{input.label}</label>
+                        <Field name={input.name}>
+                          {({ field }) => (
+                            <Rating
+                              {...field}
+                              value={values[input.name]}
+                              onChange={(event, value) =>
+                                setFieldValue(input.name, value)
+                              }
+                            />
+                          )}
+                        </Field>
+                        {touched[input.name] && errors[input.name] && (
+                          <div className="error">{errors[input.name]}</div>
+                        )}
+                      </FormControl>
+                    ) : input.type === "hidden" ? (
+                      <Field type="hidden" name={input.name} />
+                    ) : (
+                      <Field name={input.name}>
+                        {({ field }) => (
+                          <>
+                            <label>{input.label}</label>
+                            <TextField
+                              {...field}
+                              type={input.type}
+                              fullWidth={input.fullWidth}
+                              select={input.type === "select"}
+                              InputLabelProps={{
+                                shrink: input.shrink,
+                              }}
+                              rows={input.rows}
+                              multiline={input.rows ? true : false}
                               error={
                                 touched[field.name] &&
                                 Boolean(errors[field.name])
                               }
-                            >
-                              {input?.options?.map((option) => (
-                                <MenuItem
-                                  key={option?.value}
-                                  value={option?.value}
-                                >
-                                  <Checkbox
-                                    checked={values?.[input?.name]?.includes(
-                                      option?.value
-                                    )}
-                                  />
-                                  <ListItemText primary={option?.label} />
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          )}
-                        </Field>
-                        {touched[input.name] && Boolean(errors[input.name]) && (
-                          <div className="error-text">{errors[input.name]}</div>
-                        )}
-                      </FormControl>
-                    ) : (
-                      <Field name={input.name}>
-                        {({ field }) => (
-                          <TextField
-                            {...field}
-                            type={input.type}
-                            label={input.label}
-                            fullWidth={input.fullWidth}
-                            select={input.type === "select"}
-                            InputLabelProps={{
-                              shrink: input.shrink,
-                            }}
-                            rows={input.rows}
-                            multiline={input.rows ? true : false}
-                            error={
-                              touched[field.name] && Boolean(errors[field.name])
-                            }
-                            helperText={
-                              touched[field.name] && errors[field.name]
-                            }
-                            onKeyPress={
-                              input.type === "number"
-                                ? (e) => {
-                                    // Allow only numbers and the decimal point
-                                    if (!/[0-9.]/.test(e.key)) {
-                                      e.preventDefault();
+                              helperText={
+                                touched[field.name] && errors[field.name]
+                              }
+                              onKeyPress={
+                                input.type === "number"
+                                  ? (e) => {
+                                      // Allow only numbers and the decimal point
+                                      if (!/[0-9.]/.test(e.key)) {
+                                        e.preventDefault();
+                                      }
                                     }
-                                  }
-                                : undefined
-                            }
-                          >
-                            {input.type === "select" &&
-                              input.options.map((option) => (
-                                <MenuItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
-                                  {option.label}
-                                </MenuItem>
-                              ))}
-                          </TextField>
+                                  : undefined
+                              }
+                            >
+                              {input.type === "select" &&
+                                input.options.map((option) => (
+                                  <MenuItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                            </TextField>
+                          </>
                         )}
                       </Field>
                     )}
                   </Grid>
                 );
               })}
-
               {children} {/* Render custom fields here */}
             </Grid>
 

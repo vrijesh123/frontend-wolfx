@@ -1,61 +1,116 @@
-"use client"
-import { useState, useEffect, useCallback } from "react"
-import useUpdateEffect from "./useUpdateEffect";
+"use client";
+import { useState, useEffect, useCallback } from "react";
 
-export default function useFetch(api_endpoint, initialPath, initialPageSize = 10) {
-
+export default function useFetch(apiEndpoint, initialPath) {
     const [data, setData] = useState([]);
-    const [pageCount, setPageCount] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [nextUrl, setNextUrl] = useState(null); // For next page URL
+    const [prevUrl, setPrevUrl] = useState(null); // For previous page URL
     const [error, setError] = useState(null);
-    const [blur, setBlur] = useState(false);
-    const [is_loading, setIs_loading] = useState(false)
+    const [isLoading, setIsLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1); // State for current page
+    const [totalPages, setTotalPages] = useState(0); // State for total pages
+    const [totalItems, setTotalItems] = useState(0)
 
-    const fetchData = useCallback(async (path, pageSize = initialPageSize, page = 1) => {
-        setIs_loading(true)
-        try {
-            const response = await api_endpoint.get(`?${path}`);
-            const totalItems = response?.total_items;
-            setData(response);
-            setPageCount(Math.ceil(totalItems / pageSize));
+    // Fetch data from a given URL
+    const fetchData = useCallback(
+        async ({ url, pageNumber } = {}) => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                let fetchUrl = url || initialPath;
+                const urlObj = new URL(apiEndpoint.config.baseURL + fetchUrl);
 
-        } catch (err) {
-            setError(err);
-        } finally {
-            setIs_loading(false)
-        }
-    }, [api_endpoint, initialPageSize]);
+                if (pageNumber) {
+                    urlObj.searchParams.set('page', pageNumber);
+                }
+                console.log('urlobjj', apiEndpoint, urlObj)
+                fetchUrl = urlObj.searchParams.toString();
 
+                const response = await apiEndpoint.get(fetchUrl);
+                // Process response...
+                const results = response?.results || [];
+                setData(results);
+                setNextUrl(response?.next);
+                setPrevUrl(response?.previous);
+                const totalItems = response?.count || 0;
+                setTotalItems(totalItems);
+                const pageSize = results.length;
+                setTotalPages(Math.ceil(totalItems / pageSize));
+                setCurrentPage(pageNumber || 1);
+            } catch (err) {
+                setError(err);
+                console.log('errrement', err)
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [apiEndpoint, initialPath]
+    );
+
+
+    // Fetch the initial data
     const fetchInitialData = useCallback(() => {
-        fetchData(initialPath, initialPageSize, currentPage);
-    }, [fetchData, initialPath, initialPageSize, currentPage]);
+        fetchData(initialPath);
+    }, [fetchData, initialPath]);
 
-    const fetchNextPageData = (selectedPage) => {
-        fetchData(initialPath, initialPageSize, selectedPage);
-    };
+    const fetchPageData = useCallback(
+        (pageNumber) => {
+            fetchData({ pageNumber });
+        },
+        [fetchData]
+    );
 
-    const setPageSelected = ({ selected }) => {
-        const nextPage = selected + 1;
-        setCurrentPage(nextPage);
-        fetchNextPageData(nextPage);
-    };
-
-    const deleteItem = async (e, id_array) => {
+    // Delete an item and refresh the data
+    const deleteItem = useCallback(async (e, idArray) => {
         e.preventDefault();
-        setIs_loading(true);
+        setIsLoading(true);
+        setError(null); // Reset error before deleting
         try {
-            await Promise.all(id_array?.map(id => api_endpoint.delete(`/${id}`)));
-            await fetchData(initialPath, initialPageSize, currentPage);
+            await Promise.all(idArray?.map(id => apiEndpoint.delete(`/${id}`)));
+            // Refetch the current page data after deletion
+            fetchData(initialPath);
         } catch (err) {
             setError(err);
         } finally {
-            setIs_loading(false);
+            setIsLoading(false);
         }
-    };
+    }, [apiEndpoint, fetchData, initialPath]);
 
-    useUpdateEffect(() => {
+
+
+    // Edit an item and refresh the data
+    const editItem = useCallback(async (e, id, updateData) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null); // Reset error before updating
+        try {
+            await apiEndpoint.put(`/${id}`, updateData);
+            // Refetch the current page data after update
+            fetchData(initialPath);
+        } catch (err) {
+            setError(err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [apiEndpoint, fetchData, initialPath]);
+
+    // Initial data fetch on component mount
+    useEffect(() => {
         fetchInitialData();
     }, [fetchInitialData]);
 
-    return { data, setData, pageCount, setPageSelected, error, blur, fetchData, fetchNextPageData, deleteItem, is_loading, setIs_loading };
-};
+    return {
+        data,
+        setData,
+        nextUrl,
+        prevUrl,
+        currentPage,
+        totalPages,
+        totalItems,
+        fetchPageData,
+        error,
+        isLoading,
+        deleteItem,
+        editItem
+    };
+}

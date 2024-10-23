@@ -1,237 +1,190 @@
 "use client";
-import { productApi } from "@/api/api";
-import GlobalTable from "@/components/common_components/GlobalTable/GlobalTable";
+
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Badge from "@mui/material/Badge";
+import Button from "@mui/material/Button";
+import { Pencil, Trash2 } from "lucide-react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import GlobalTable from "../common_components/GlobalTable/GlobalTable";
+import { digitalAssetApi } from "@/api/api";
 import useFetch from "@/hooks/useFetch";
-import React, { useState } from "react";
-import ProductRow from "./ProductRow";
-import GlobalForm from "@/components/common_components/GlobalForm/GlobalForm";
-import { Drawer, MenuItem, Select, TextField } from "@mui/material";
-import CardSkeletons from "@/utils/LoadingSkeletons/CardSkeletons";
-import { countries_flag } from "@/utils/commonUtils";
+import moment from "moment";
 
-const tableHeader = [
-  {
-    id: "title",
-    numeric: false,
-    disablePadding: false,
-    label: "Name",
-  },
-  {
-    id: "category",
-    numeric: true,
-    disablePadding: false,
-    label: "Category",
-  },
-  {
-    id: "description",
-    numeric: true,
-    disablePadding: false,
-    label: "Description",
-  },
-  {
-    id: null,
-    numeric: true,
-    disablePadding: false,
-    label: "Image",
-  },
-  {
-    id: "price",
-    numeric: true,
-    disablePadding: false,
-    label: "price",
-  },
-  {
-    id: "rating.rate",
-    numeric: true,
-    disablePadding: false,
-    label: "Rate",
-  },
+const severityColors = {
+  Critical: { backgroundColor: "purple" },
+  High: { backgroundColor: "red" },
+  Medium: { backgroundColor: "orange" },
+  Low: { backgroundColor: "yellow" },
+};
+
+const statusColors = {
+  Open: { backgroundColor: "green" },
+  Closed: { backgroundColor: "blue" },
+  "In progress": { backgroundColor: "orange" },
+};
+
+const tabs = [
+  { id: "breacheye", label: "Breacheye", count: 36 },
+  { id: "antirouge", label: "Anti Rouge", count: 36 },
+  { id: "antiphishing", label: "Anti Phishing", count: 36 },
 ];
 
-const product_form_json = [
-  {
-    type: "text",
-    name: "title",
-    label: "Name",
-    fullWidth: true,
-    xs: 12,
-    sm: 12,
-    md: 6,
-    lg: 6,
-    validation_message: "Product Name is required",
-    required: true,
-  },
-  {
-    type: "number",
-    name: "price",
-    label: "Price",
-    fullWidth: true,
-    xs: 12,
-    sm: 12,
-    md: 6,
-    lg: 6,
-    validation_message: "Product price is required",
-    required: true,
-  },
-  {
-    type: "text",
-    name: "description",
-    label: "Description",
-    fullWidth: true,
-    xs: 12,
-    sm: 12,
-    md: 12,
-    lg: 12,
-    shrink: true,
-    rows: 5,
-    // validation_message: "Description is required",
-  },
-  {
-    type: "select",
-    name: "category",
-    label: "Category",
-    options: [
-      { value: "men's clothing", label: "men's clothing" },
-      { value: "jewelery", label: "jewelery" },
-      { value: "electronics", label: "electronics" },
-      { value: "women's clothing", label: "women's clothing" },
-    ],
-    fullWidth: true,
-    required: true,
-    xs: 12,
-    sm: 12,
-    md: 12,
-    lg: 12,
-    validation_message: "Category is required",
-    required: true,
-  },
+export default function ProductTable() {
+  const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const router = useRouter();
 
-  {
-    name: "multi_select_field",
-    type: "multi-select-checkbox",
-    label: "Select Options",
-    required: true,
-    xs: 12,
-    sm: 12,
-    md: 12,
-    lg: 12,
-    validation_message: "At least one option must be selected",
-    options: [
-      { label: "Option 1", value: "option1" },
-      { label: "Option 2", value: "option2" },
-      { label: "Option 3", value: "option3" },
-    ],
-  },
-  {
-    name: "favorite_fruits",
-    label: "Favorite Fruits",
-    type: "multi-select-dropdown",
-    required: true,
-    validation_message: "Select at least one fruit",
-    options: [
-      { label: "Apple", value: "apple" },
-      { label: "Banana", value: "banana" },
-      { label: "Cherry", value: "cherry" },
-    ],
-    fullWidth: true,
-    xs: 12,
-    sm: 12,
-    md: 12,
-    lg: 12,
-  },
-  {
-    type: "image",
-    name: "image",
-    label: "Product Image",
-    fullWidth: true,
-    xs: 12,
-    sm: 12,
-    md: 12,
-    lg: 12,
-    shrink: true,
-    validation_message: "Image is required",
-    required: true,
-  },
-
-  // color picker styles
-];
-
-const ProductTable = () => {
   const {
     data,
     setData,
-    pageCount,
-    setPageSelected,
-    error,
-    blur,
-    fetchData,
+    loading,
     deleteItem,
-    is_loading,
-    setIs_loading,
-  } = useFetch(productApi, "limit=10", 10);
+    nextUrl,
+    prevUrl,
+    currentPage,
+    totalPages,
+    totalItems,
+    fetchPageData,
+  } = useFetch(digitalAssetApi, ``);
 
-  const [open_drawer, setOpen_drawer] = useState(false);
-  const [open_edit_drawer, setOpen_edit_drawer] = useState(false);
-
-  const on_Submit = async (data) => {
-    setIs_loading(true);
-    try {
-      const res = await productApi.post("", data);
-      setData((prev) => [...prev, res]);
-    } catch (error) {
-    } finally {
-      setIs_loading(false);
-      setOpen_drawer(false);
-    }
+  const handleEdit = (id) => {
+    router.push(`/edit/${id}`);
   };
 
-  return (
-    <>
-      <GlobalTable
-        tableHeader={tableHeader}
-        tableData={data}
-        setData={setData}
-        setPageSelected={setPageSelected}
-        pageCount={pageCount}
-        noToolbar={false}
-        noCheckbox={false}
-        showAdd={true}
-        showEdit={true}
-        add_btn_title={"Add Product"}
-        title={"Products"}
-        is_loading={is_loading}
-        showSearch={true}
-        deleteItem={deleteItem}
-        openFormDrawer={() => setOpen_drawer(true)}
-        openFormEditDrawer={() => setOpen_edit_drawer(true)}
-        searchApi={productApi}
-        searchPath={`category`}
-        fetchData={() => fetchData("limit=10")}
-      >
-        <ProductRow
-          open_edit_drawer={open_edit_drawer}
-          setOpen_edit_drawer={setOpen_edit_drawer}
-          product_form_json={product_form_json}
-          data={data}
-          setData={setData}
-        />
-      </GlobalTable>
+  const handleDelete = (id) => {
+    console.log(`Deleting item with id: ${id}`);
+    setData(data?.filter((item) => item.id !== id));
+  };
 
-      {/* // Add Drawer to Global */}
-      <Drawer
-        anchor="right"
-        open={open_drawer}
-        PaperProps={{
-          sx: { width: { lg: "600px", sm: "80%", xs: "80%" }, padding: "20px" },
-        }}
-        onClose={() => setOpen_drawer(false)}
+  const columns = [
+    { key: "id", label: "ID", sortable: true },
+    {
+      key: "photo",
+      label: "Photo",
+      render: (_, item) => (
+        <img
+          src={`${item?.photo?.[0] ?? ""}`}
+          alt="Digital Asset"
+          style={{ width: "40px", height: "40px" }}
+        />
+      ),
+    },
+    ,
+    {
+      key: "alias_name",
+      label: "Alisa Name",
+      render: (_, item) => (
+        <p>{item?.alias_name?.map((alias) => `${alias}, `)}</p>
+      ),
+    },
+    {
+      key: "email",
+      label: "Emails",
+      render: (_, item) => <p>{item?.email?.map((em) => `${em}, `)}</p>,
+    },
+    {
+      key: "created_at",
+      label: "Created At",
+      sortable: true,
+      render: (value) => <p>{moment(value).format("DD/MM/YYYY")}</p>,
+    },
+    // {
+    //   key: "status",
+    //   label: "Status",
+    //   sortable: true,
+    //   render: (value) => (
+    //     <p style={{ ...statusColors[value], color: "white", padding: "5px" }}>
+    //       {value}
+    //     </p>
+    //   ),
+    // },
+    // { key: "threatType", label: "Threat Type", sortable: true },
+    {
+      key: "action",
+      label: "Actions",
+      render: (_, item) => (
+        <div style={{ display: "flex", gap: "8px" }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={() => handleEdit(item.id)}
+            startIcon={<Pencil style={{ height: "16px", width: "16px" }} />}
+          >
+            Edit
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const handleSearch = (term) => {
+    const filtered = data?.filter((item) =>
+      Object.values(item).some((value) =>
+        value.toString().toLowerCase().includes(term.toLowerCase())
+      )
+    );
+    setData(filtered);
+  };
+
+  const handleSort = (key, direction) => {
+    const sorted = [...data].sort((a, b) => {
+      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+      return 0;
+    });
+    setData(sorted);
+  };
+
+  const handleFilter = () => {
+    console.log("Applying filter");
+  };
+
+  const customCTAButtons = (
+    <>
+      <Button
+        variant="contained"
+        color="primary"
+        style={{ marginRight: "8px" }}
+        onClick={() => router.push("/about")}
       >
-        <GlobalForm form_config={product_form_json} on_Submit={on_Submit}>
-       
-        </GlobalForm>
-      </Drawer>
+        + Add
+      </Button>
     </>
   );
-};
 
-export default ProductTable;
+  console.log("digital asset", data);
+
+  return (
+    <Box>
+      <Box mt={4}>
+        {loading ? (
+          <Typography variant="h6" align="center">
+            Loading...
+          </Typography>
+        ) : (
+          <GlobalTable
+            columns={columns}
+            data={data}
+            allData={data}
+            title={activeTab}
+            onSearch={handleSearch}
+            onSort={handleSort}
+            onFilter={handleFilter}
+            pageSize={totalPages}
+            totalItems={totalItems}
+            currentPage={currentPage}
+            fetchPageData={fetchPageData}
+            next={nextUrl}
+            prev={prevUrl}
+            showExportCTA={true}
+            headerActions={customCTAButtons}
+          />
+        )}
+      </Box>
+    </Box>
+  );
+}

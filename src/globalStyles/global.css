@@ -47,8 +47,8 @@
   --bs-body-bg-rgb: 255, 255, 255;
   --bs-font-sans-serif: 'Sora', sans-serif;
   --bs-gradient: linear-gradient(180deg,
-			rgba(255, 255, 255, 0.15),
-			rgba(255, 255, 255, 0));
+            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0));
   --bs-body-font-size: 1rem;
   --bs-body-font-weight: 400;
   --bs-body-line-height: 1.5;
@@ -129,29 +129,29 @@ body::-webkit-scrollbar-thumb {
           justify-content: flex-start;
 }
 
-.sidenav-main-layout {
-  height: 100%;
-  padding-left: 80px;
-  overflow: scroll;
-}
-
-@media screen and (max-width: 700px) {
-  .sidenav-main-layout {
-    padding: 0;
-  }
-}
-
-.content-wrapper {
+.main-content {
   /* //for sidenav apply this style */
   -webkit-box-flex: 1;
       -ms-flex: 1;
           flex: 1;
   background-color: #FCFCFC;
-  min-height: 100dvh;
-  padding-top: 60px;
+  margin-left: 250px;
+  min-height: calc(100vh - 60px);
+  position: relative !important;
+  /* Adjust to full height minus top-menu */
 }
 
-.content-wrapper::-webkit-scrollbar {
+@media screen and (max-width: 700px) {
+  .main-content {
+    margin-left: unset;
+  }
+}
+
+.main-content .content {
+  padding: 100px 0;
+}
+
+.main-content::-webkit-scrollbar {
   width: 0;
   /* Remove horizontal scrollbar */
   height: 0;
@@ -160,7 +160,7 @@ body::-webkit-scrollbar-thumb {
   /* Hide scrollbar */
 }
 
-.content-wrapper::-webkit-scrollbar-thumb {
+.main-content::-webkit-scrollbar-thumb {
   background-color: transparent;
   /* Change thumb color on hover */
 }
@@ -1952,9 +1952,29 @@ section {
   z-index: 10;
 }
 
+.navbar {
+  width: 100%;
+  height: 60px;
+  background-color: transparent;
+  position: fixed;
+  top: 0;
+  width: calc(100dvw - 250px);
+  z-index: 10;
+  -webkit-transition: background-color 0.3s;
+  transition: background-color 0.3s;
+}
+
+@media screen and (max-width: 700px) {
+  .navbar {
+    width: 100%;
+  }
+}
+
+.navbar.scrolled {
+  background-color: white;
+}
+
 .top-nav-container {
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 0 15px;
   display: -webkit-box;
   display: -ms-flexbox;
@@ -1966,21 +1986,6 @@ section {
       -ms-flex-align: center;
           align-items: center;
   height: 100%;
-}
-
-.navbar {
-  width: 100%;
-  height: 60px;
-  background-color: transparent;
-  position: fixed;
-  top: 0;
-  z-index: 100;
-  -webkit-transition: background-color 0.3s;
-  transition: background-color 0.3s;
-}
-
-.navbar.scrolled {
-  background-color: white;
 }
 
 .menu-icon {
@@ -2091,6 +2096,188 @@ section {
   text-decoration: none;
 }
 
+.side-menu {
+  background-color: #0D0E12;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 105;
+  font-size: 0.8em;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -webkit-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+}
+
+.side-menu * {
+  color: #9a9cae;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.side-menu *:hover {
+  color: #f5f5f5;
+}
+
+.side-menu .logo-container {
+  border-bottom: 1px dashed #1f212a;
+  padding: 1rem 1rem 0.65rem 1rem;
+}
+
+.side-menu .logo-container .logo {
+  line-height: 100%;
+  color: white;
+  font-size: 2.5em;
+  font-family: 'Bebas Neue';
+}
+
+.side-menu .icon {
+  height: 20px;
+  width: 20px;
+  display: block;
+}
+
+.side-menu .icon svg {
+  -o-object-fit: contain;
+     object-fit: contain;
+}
+
+.side-menu .menu {
+  -webkit-box-flex: 1;
+      -ms-flex-positive: 1;
+          flex-grow: 1;
+  overflow: auto;
+}
+
+.side-menu .menu::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+  /* Ensures scrollbar is hidden when not hovered */
+}
+
+.side-menu .menu:hover::-webkit-scrollbar-track {
+  background: #333;
+  /* Visible track on hover */
+  border-radius: 10px;
+}
+
+.side-menu .menu:hover::-webkit-scrollbar-thumb {
+  background: #888;
+  /* Visible thumb on hover */
+  border-radius: 10px;
+  -webkit-transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease;
+}
+
+.side-menu .menu:hover::-webkit-scrollbar-thumb:hover {
+  background: #555;
+  /* Darker thumb on hover */
+}
+
+.side-menu .menu:hover::-webkit-scrollbar {
+  background: #2a2a2a;
+  /* Makes the scrollbar track slightly visible */
+}
+
+.side-menu .bottom {
+  width: 100%;
+  border-top: 1px dashed #1f212a;
+}
+
+.side-menu details {
+  padding: 10px 20px;
+}
+
+.side-menu details > summary > .arrow {
+  -webkit-transition: -webkit-transform 0.3s ease;
+  transition: -webkit-transform 0.3s ease;
+  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, -webkit-transform 0.3s ease;
+}
+
+.side-menu details[open] > summary > .arrow {
+  -webkit-transform: rotate(180deg);
+          transform: rotate(180deg);
+  -webkit-transform-origin: 50% 50%;
+          transform-origin: 50% 50%;
+}
+
+.side-menu .details-content {
+  overflow: hidden;
+  /* Hide overflow while transitioning */
+  height: 0;
+  /* Start with zero height */
+  -webkit-transition: height 0.3s ease;
+  transition: height 0.3s ease;
+  /* Add transition for smooth opening/closing */
+}
+
+.side-menu .details-content.open {
+  height: auto;
+  /* Once open, set height to auto */
+}
+
+.side-menu ul {
+  list-style-type: none;
+  margin-top: 10px;
+  padding: 0;
+  min-width: 250px;
+  font-size: 14px;
+}
+
+.side-menu ul li {
+  padding: 10px 20px;
+}
+
+.side-menu ul summary {
+  text-decoration: none;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+.side-menu ul summary ul {
+  margin-top: 10px;
+}
+
+.side-menu ul li,
+.side-menu ul summary {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: baseline;
+      -ms-flex-align: baseline;
+          align-items: baseline;
+}
+
+.side-menu ul li .name,
+.side-menu ul summary .name {
+  -webkit-box-flex: 1;
+      -ms-flex-positive: 1;
+          flex-grow: 1;
+  padding: 0 10px;
+}
+
+.side-menu ul li .arrow,
+.side-menu ul summary .arrow {
+  font-size: 10px;
+}
+
+.side-menu ul li ul,
+.side-menu ul summary ul {
+  margin-top: 0;
+}
+
 .css-1wvake5 {
   height: 100dvh;
   position: fixed !important;
@@ -2107,7 +2294,8 @@ section {
   color: #FFFF;
 }
 
-.css-16jesut, .css-16jesut > .ps-menu-button:hover {
+.css-16jesut,
+.css-16jesut > .ps-menu-button:hover {
   background-color: #0D0E12 !important;
 }
 
@@ -2365,9 +2553,9 @@ section {
   -webkit-overflow-scrolling: touch;
 }
 
-.error-text {
+.error {
   font-size: 0.75rem;
-  color: red;
+  color: #d32f2f;
   padding: 4px 15px 0;
 }
 
@@ -2400,5 +2588,59 @@ section {
   .contact-container .contact-illustration {
     display: none;
   }
+}
+
+.dropzone {
+  background-color: #27272A;
+  max-width: 350px;
+  height: 140px;
+  border-radius: 12px;
+  color: #5f5f5f;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  cursor: pointer;
+}
+
+.dropzone div {
+  width: 100%;
+  height: 100%;
+}
+
+.dropzone div img {
+  width: 100%;
+  height: 100%;
+  -o-object-fit: contain;
+     object-fit: contain;
+}
+
+.slide-In {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100%;
+  background-color: #0D0E12;
+  -webkit-transform-origin: bottom;
+          transform-origin: bottom;
+  z-index: 10000;
+}
+
+.slide-Out {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100%;
+  background-color: #0D0E12;
+  -webkit-transform-origin: top;
+          transform-origin: top;
+  z-index: 10000;
 }
 /*# sourceMappingURL=global.css.map */

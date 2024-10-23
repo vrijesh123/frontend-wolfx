@@ -1,9 +1,9 @@
-"use client"
+"use client";
 import { useEffect, useState } from "react";
 import "../../../globalStyles/global.css";
 import RightNav from "./RightNav";
 
-export default function Navbar(){
+export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -15,24 +15,24 @@ export default function Navbar(){
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
   return (
-    <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
-      <div className="top-nav-container">
+    <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
+      <div className="container top-nav-container">
         <div className="logo">
           <Logo />
         </div>
-        <RightNav/>
+        <RightNav />
       </div>
     </nav>
   );
-};
+}
 
 const Logo = () => (
   <svg

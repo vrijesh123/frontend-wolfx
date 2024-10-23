@@ -13,9 +13,6 @@ const ContactUs = () => {
           <ContactUsForm />
         </div>
       </div>
-      <div className="contact-form">
-          <ContactUsForm />
-        </div>
     </div>
   );
 };

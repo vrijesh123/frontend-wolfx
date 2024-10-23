@@ -65,7 +65,7 @@ export default class APIBase {
 
   addToken(token) {
     if (token) {
-      this.config.headers["Authorization"] = `Bearer ${token}`;
+      this.config.headers["Authorization"] = `JWT ${token}`;
     }
   }
 
@@ -91,7 +91,7 @@ export default class APIBase {
         }
         return `${message}, Invalid: ${invalidMessages}`;
       }
-  
+
       return Object.entries(data)
         .map(([key, value]) => {
           // Assume value is an array of messages; join them if there are many
@@ -100,22 +100,22 @@ export default class APIBase {
         })
         .join('\n'); // Separate multiple errors with a semicolon and space
     }
-  
+
     // Default generic error message
     return data?.error || data?.detail || data?.details || data?.message || data?.response?.message || "An unexpected error occurred";
   };
 
   handleErrorResponse = (error) => {
     const { response } = error;
-  
+
     if (response) {
       const { status, data, config } = response;
       const errorMessage = this.extract_error_message(data);  // Use the new function here
-  
+
       console.error("Error status:", status, errorMessage);
       console.error("Error data:", data);
       console.error("Error config:", config);
-  
+
       // Handling errors based on the HTTP method used
       if (['post', 'delete', 'patch', 'put'].includes(config.method.toLowerCase())) {
         switch (status) {
@@ -142,7 +142,7 @@ export default class APIBase {
       console.error("Error message:", error.message);
       Swal.fire("Error", error.message || "Something went wrong", "error");
     }
-  
+
     // return Promise.reject(error);
   };
 
@@ -171,9 +171,9 @@ export default class APIBase {
       return await debouncedFunc();
     } catch (error) {
       this.handleErrorResponse(error);
-      if(error?.response?.status == 404){
+      if (error?.response?.status == 404) {
         return error;
-      } else{
+      } else {
         throw error;
       }
     }
@@ -263,7 +263,7 @@ export default class APIBase {
 
   // Method to build Authorization header
   buildAuthHeader(token) {
-    return { Authorization: `Bearer ${token}` };
+    return { Authorization: `JWT ${token}` };
     // return {
     //   Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzEzNzE3NTI1LCJpYXQiOjE3MDUwNzc1MjUsImp0aSI6IjM2YzEzMTcwZjE5MTRmMWQ4ZThiYjZiY2ZhZGU4OTE1IiwidXNlcl9pZCI6Mn0.0Orq5oq6NsGmOi4KDkWofJlWU-CYnpji9HYRi3euhtw`,
     // };

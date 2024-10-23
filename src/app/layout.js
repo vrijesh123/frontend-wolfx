@@ -1,49 +1,58 @@
+
+"use client"
 import { Inter, Roboto } from "next/font/google";
 import "./globals.css";
 import Head from "next/head";
 import Navbar from "@/components/common_components/Navbars/Navbar";
 import SideNav from "@/components/common_components/Navbars/SIdeNavbar";
+import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 const inter = Inter({
   weight: ['400', '500', '700'],
   subsets: ['latin'],
 })
 
-export const metadata = {
-  title: "WolfX",
-  description: "WolfX frontend setup",
-  keywords: "WolfX, frontend, setup, digital agency, IT services, artificial flowers, home decor, furniture",
-  url: "https://www.wolfx.com",
-};
+
 
 export default function RootLayout({ children }) {
+  const pathname = usePathname();
+
   return (
     <html lang="en" className={inter.className}>
-      <Head>
-        <title>{metadata.title}</title>
-        <meta name="description" content={metadata.description} />
-        <meta name="keywords" content={metadata.keywords} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta property="og:title" content={metadata.title} />
-        <meta property="og:description" content={metadata.description} />
-        <meta property="og:url" content={metadata.url} />
-        <meta property="og:image" content={'/next.svg'} />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={metadata.title} />
-        <meta name="twitter:description" content={metadata.description} />
-        <meta name="twitter:image" content={metadata.image} />
-      </Head>
-      {/* <body className="sidenav-body"> */}
+
       <body>
+        <AnimatePresence mode="wait">
+          <div className="gtranslate_wrapper"></div>
+          <motion.div key={pathname}>
+            <SideNav />
 
-        <Navbar />
+            <main className="main-content">
+              <Navbar />
 
-        {/* // for side nav */}
-        {/* <SideNav /> */}
-        <main className="content-wrapper sidenav-main-layout">
-        {/* <main className="content-wrapper"> */}
-          {children}
-        </main>
+              <div className="content">
+                {children}
+              </div>
+            </main>
+            <motion.div
+              className="slide-In"
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 0 }}
+              exit={{ scaleY: 1 }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            ></motion.div>
+            <motion.div
+              className="slide-Out"
+              initial={{ scaleY: 1 }}
+              animate={{ scaleY: 0 }}
+              exit={{ scaleY: 0 }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            ></motion.div>
+
+          </motion.div>
+        </AnimatePresence>
+
+
       </body>
     </html>
   );
